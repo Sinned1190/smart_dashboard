@@ -1,13 +1,9 @@
 import streamlit as st
-import datetime
-import psutil
-import os
-import streamlit as st
 from dotenv import load_dotenv
 
 from app.system_info import get_system_info
-from app.weather import load_weather_config, fetch_current_weather, WeatherError
 from app.timer import render_timer
+from app.weather import WeatherError, fetch_current_weather, load_weather_config
 
 load_dotenv()
 
@@ -27,21 +23,43 @@ col4.metric("Uptime", str(info['uptime']).split('.')[0])  # Remove microseconds
 
 st.divider()
 
-#Weather
+# Weather
 st.header("Wetter")
 @st.cache_data(ttl=600)
 def _cached_weather():
-    api_key, city, country, lang, units, = load_weather_config()
-    return fetch_current_weather(api_key, city, country, lang, units)
+    config = load_weather_config()
+    return fetch_current_weather(config)
 
 try:
     weather = _cached_weather()
     wc1, wc2, wc3, wc4 = st.columns(4)
-    wc1.metric("Temperatur", f"{weather['temperature']} °C")
-    wc2.metric("Luftfeuchtigkeit", f"{weather['humidity']} %")
-    wc3.metric("Luftdruck", f"{weather['pressure']} hPa")
-    wc4.metric("Wetter", weather['description'].title())
-    st.write(f"**Wind** {weather['wind_speed']} m/s, **Sichtweite** {weather['visibility']} m")
+    temperature = weather.get("temperature")
+    humidity = weather.get("humidity")
+    pressure = weather.get("pressure")
+    location = weather.get("location")
+    description = weather.get("description", "–")
+    wind_speed = weather.get("wind_speed")
+    visibility = weather.get("visibility")
+    observed_at = weather.get("observed_at")
+
+    wc1.metric("Temperatur", f"{temperature:.1f} °C" if temperature is not None else "–")
+    wc2.metric("Luftfeuchtigkeit", f"{humidity} %" if humidity is not None else "–")
+    wc3.metric("Luftdruck", f"{pressure} hPa" if pressure is not None else "–")
+    wc4.metric("Wetter", description.title() if isinstance(description, str) else "–")
+
+    wind_text = f"{wind_speed} m/s" if wind_speed is not None else "–"
+    visibility_text = (
+        f"{visibility / 1000:.1f} km" if isinstance(visibility, (int, float)) else "–"
+    )
+    st.write(f"**Wind** {wind_text}, **Sichtweite** {visibility_text}")
+
+    caption_parts = []
+    if isinstance(location, str) and location:
+        caption_parts.append(location)
+    if observed_at is not None:
+        caption_parts.append(observed_at.strftime("%d.%m.%Y %H:%M:%S %Z"))
+    if caption_parts:
+        st.caption(" • ".join(caption_parts))
 except WeatherError as e:
     st.error(f"Wetterdaten konnten nicht geladen werden: {e}")
 except Exception as e:
