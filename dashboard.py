@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 from dotenv import load_dotenv
 
 from app.system_info import get_system_info
@@ -9,8 +10,12 @@ load_dotenv()
 
 st.set_page_config(page_title="Smart Dashboard", layout="wide")
 
+
+
 st.title("Smart Dashboard Raspberry Pi 5")
 st.caption("Systeminfos Server * Wetter * Fokus-Timer")
+
+st_autorefresh(interval=2000, key="dashboard_refresh")  # Refresh every 5 minutes
 
 # System infos
 st.header("System Informationen")
